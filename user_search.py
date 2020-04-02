@@ -16,11 +16,13 @@ auth.set_access_token(access_token, access_token_secret)
 
 api = tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
 
-users_list = api.search_users('canelones')
+users_list = api.search_users('marcelo')
 user_name = ''
+count = 0
 for user in users_list:
    user_name = user.id_str
-   print(user.screen_name+"<->"+user.description+"<->"+user.location+"<->"+user.profile_image_url_https)
+   print(str(count)+'<->'+user.screen_name+"<->"+user.description+"<->"+user.location+"<->"+user.profile_image_url_https)
+   count += 1
 
 """
 print("--------------------------------")

@@ -26,7 +26,8 @@ access_token_secret = '5IuyQNSDleh6PkS1HXSE8N1Au30JgoLhHoj9QtiI3pMhd'
 auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
 auth.set_access_token(access_token, access_token_secret)
 # con este objeto realizaremos todas las llamadas al API
-api = tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
+api = tweepy.API(auth, wait_on_rate_limit=True,
+                 wait_on_rate_limit_notify=True, compression=True)
 
 document = Document()
 
@@ -77,32 +78,14 @@ class Ventana:
 
         # fetched_tweets = api.search(self.name.get(), count = 3000) #+ api.search(b, count = 300) + api.search(c, count = 300)
         t.start()
-        user_list = api.search_users(query_word);
+        user_list = api.search_users(query_word)
         for user in user_list:
             time.sleep(0.05)
             self.progress_bar["value"] = +(+count)
             self.progress_bar.update()
-            self.tree.insert('', 0, text=user.id_str, value=(
-                user.name, user.screen_name, user.description, user.location))
+            if len(user.location) != 0: # and 'uruguay' in user.location or 'Uruguay' in user.location:
+                self.tree.insert('', 0, text=user.id_str, value=(user.name, user.screen_name, user.description, user.location))
             count += 1
-        """
-        tweetCriteria = got.manager.TweetCriteria().setQuerySearch(
-            self.name.get()).setSince("2018-05-01").setUntil("2019-05-01").setMaxTweets(100).setNear("Ciudad de la Costa, Uruguay").setWithin("15mi")
-        all_tweets = got.manager.TweetManager.getTweets(tweetCriteria)
-
-        self.progress_bar["maximum"] = len(all_tweets)
-
-        for tweet in all_tweets:
-            time.sleep(0.05)
-            self.progress_bar["value"] = +(+count)
-            self.progress_bar.update()
-            tweet_api = api.get_status(tweet.id)
-            print(tweet_api.place.bounding_box.coordinates)
-            if len(tweet_api.user.description) != 0:
-                self.tree.insert('', 0, text=tweet.date, value=(
-                tweet.text, tweet.username, tweet_api.user.description, tweet_api.place.full_name))
-            count += 1
-        """
 
         self.progress_bar["value"] = 0
 
@@ -128,55 +111,43 @@ class Ventana:
             rcmenu.add_command(label='Añadir a la base de datos',
                                command=self.add_database)
             rcmenu.add_command(label='Visitar perfil', command=self.selection)
+            rcmenu.add_command(label='Agregar followers', command=self.get_followers)
             rcmenu.post(event.x_root, event.y_root)
 
     def add_database(self):
         curItem = self.tree.item(self.id_selection)
-        document.add_heading(curItem['values'][0],0)
-        document.add_heading(curItem['values'][1],level=1)
+        document.add_heading(curItem['values'][0], 0)
+        document.add_heading(curItem['values'][1], level=1)
         document.add_paragraph('Descripcion', style='Intense Quote')
         document.add_paragraph(curItem['values'][2])
 
-        """
-        num_fila = 0
-
-        for tweet in tweepy.Cursor(api.user_timeline, id=curItem['values'][1]).items():
-            time.sleep(0.05)
-            print(num_fila)
-            num_fila += 1
-        """
-
         count = 0
-        """
-        table = document.add_table(rows=num_fila+1,cols=5)
-        hdr_cells = table.rows[0].cells
-        hdr_cells[0].text = '#'
-        hdr_cells[1].text = 'ID'
-        hdr_cells[2].text = 'Fecha'
-        hdr_cells[3].text = 'Texto'
-        hdr_cells[4].text = 'Lugar'
-        """
+
         for tweet in tweepy.Cursor(api.user_timeline, id=curItem['values'][1]).items():
             time.sleep(0.05)
             self.progress_bar["value"] = +(+count)
             self.progress_bar.update()
-            if len(tweet.text)!=0:
-                """
-                row_cells = table.add_row().cells
-                row_cells[0].text = str(count)
-                row_cells[1].text = tweet.id_str
-                row_cells[2].text = str(tweet.created_at)
-                row_cells[3].text = tweet.text
-                row_cells[4].text = tweet.user.location
-                """
-            document.add_paragraph('ID: '+tweet.id_str+' Fecha: '+str(tweet.created_at)+' Texto: '+tweet.text+' Ubicacion: '+tweet.user.location,style='List Number')
+            document.add_paragraph('ID: '+tweet.id_str+' Fecha: '+str(tweet.created_at) +
+                                   ' Texto: '+tweet.text+' Ubicacion: '+tweet.user.location, style='List Number')
             print('Trabajando '+str(count))
             count += 1
         self.progress_bar["value"] = 0
-        
+
         # document.add_page_break()
         document.save('Registro '+curItem['values'][0]+'.docx')
         print('Tarea completada')
+
+    def get_followers(self):
+        count = 0
+        curItem = self.tree.item(self.id_selection)
+        for follower_id in api.followers(curItem['values'][1]):
+            time.sleep(0.05)
+            self.progress_bar["value"] = +(+count)
+            self.progress_bar.update()
+            if len(follower_id.location) != 0:
+                self.tree.insert('', 0, text=follower_id.id_str, value=(follower_id.name, follower_id.screen_name, follower_id.description, follower_id.location))
+            
+        self.progress_bar["value"] = 0
 
     def selection(self):
         curItem = self.tree.item(self.id_selection)
