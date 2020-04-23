@@ -38,7 +38,7 @@ class Ventana:
     # definimos el metodo que creara la interfaz
     def __init__(self, window):
         self.wind = window
-        self.wind.title('CODESUR')
+        self.wind.title('CORDESUR')
 
         # Creamos frame contenedor
         frame = LabelFrame(self.wind, text="Buscar en twitter")
@@ -52,6 +52,8 @@ class Ventana:
         self.button = ttk.Button(
             frame, text='Buscar en twitter', command=self.get_twitters)
         self.button.grid(row=1, column=2)
+        self.button_limpiar = ttk.Button(frame, text='Limpiar tabla', command=self.limpiar_tabla)
+        self.button_limpiar.grid(row=1, column=3)
         Label(frame, text='Progreso de la busqueda: ').grid(row=2, column=0)
         self.progress_bar = ttk.Progressbar(
             frame, orient='horizontal', length=286, mode='determinate')
@@ -152,6 +154,11 @@ class Ventana:
     def selection(self):
         curItem = self.tree.item(self.id_selection)
         webbrowser.open_new('https://twitter.com/'+curItem['values'][1])
+
+    def limpiar_tabla(self):
+        tree_table = self.tree
+        for i in tree_table.get_children():
+            self.tree.delete(i)
 
 
 # metodo main de nuestro programa
