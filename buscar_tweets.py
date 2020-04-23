@@ -3,7 +3,7 @@ import json
 # librerias de las interfaces
 import tkinter as tk
 from tkinter import ttk
-from tkinter import *
+from tkinter import Tk, LabelFrame, Label, Entry, CENTER, Menu
 from tkinter.messagebox import showinfo
 # progrees time
 import time
@@ -81,7 +81,7 @@ class Ventana:
         user_list = api.search_users(query_word)
         for user in user_list:
             time.sleep(0.05)
-            self.progress_bar["value"] = +(+count)
+            self.progress_bar["value"] += count
             self.progress_bar.update()
             if len(user.location) != 0: # and 'uruguay' in user.location or 'Uruguay' in user.location:
                 self.tree.insert('', 0, text=user.id_str, value=(user.name, user.screen_name, user.description, user.location))
@@ -111,7 +111,7 @@ class Ventana:
             rcmenu.add_command(label='Añadir a la base de datos',
                                command=self.add_database)
             rcmenu.add_command(label='Visitar perfil', command=self.selection)
-            rcmenu.add_command(label='Agregar followers', command=self.get_followers)
+            rcmenu.add_command(label='Mostrar seguidores', command=self.get_followers)
             rcmenu.post(event.x_root, event.y_root)
 
     def add_database(self):
@@ -125,7 +125,7 @@ class Ventana:
 
         for tweet in tweepy.Cursor(api.user_timeline, id=curItem['values'][1]).items():
             time.sleep(0.05)
-            self.progress_bar["value"] = +(+count)
+            self.progress_bar["value"] += count
             self.progress_bar.update()
             document.add_paragraph('ID: '+tweet.id_str+' Fecha: '+str(tweet.created_at) +
                                    ' Texto: '+tweet.text+' Ubicacion: '+tweet.user.location, style='List Number')
@@ -142,7 +142,7 @@ class Ventana:
         curItem = self.tree.item(self.id_selection)
         for follower_id in api.followers(curItem['values'][1]):
             time.sleep(0.05)
-            self.progress_bar["value"] = +(+count)
+            self.progress_bar["value"] += count
             self.progress_bar.update()
             if len(follower_id.location) != 0:
                 self.tree.insert('', 0, text=follower_id.id_str, value=(follower_id.name, follower_id.screen_name, follower_id.description, follower_id.location))
