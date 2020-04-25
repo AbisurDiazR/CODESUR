@@ -26,10 +26,10 @@ import sqlite3
 from tkinter import ttk
 from tkinter import *
 
-consumer_key = 'gsswiM06At2InB2hgzwfpAiVO'
-consumer_secret = 'jvt4RD4s6rzCUbRq4cCQWTS0dwg809TieyIUpPj2kV1UViuqbt'
-access_token = '2460423055-aoTaKilqm8RCiwXWXg5d9L0Y3JF6rhVnDA5jpLl'
-access_token_secret = '5IuyQNSDleh6PkS1HXSE8N1Au30JgoLhHoj9QtiI3pMhd'
+consumer_key = ''
+consumer_secret = ''
+access_token = ''
+access_token_secret = ''
 
 auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
 auth.set_access_token(access_token, access_token_secret)
@@ -145,10 +145,20 @@ class TablaUsuarios(QMainWindow):
         # botones
         self.registrar_btn = QtWidgets.QPushButton("Registrar usuario")
         self.registrar_btn.clicked.connect(self.nuevo_usuario)
+        self.actualizar_btn = QtWidgets.QPushButton("Editar usuario")
+        self.actualizar_btn.clicked.connect(self.editar_usuario)
+        self.borrar_btn = QtWidgets.QPushButton("Borrar usuario")
+        self.borrar_btn.clicked.connect(self.borrar_usuario)
+        self.update_btn = QtWidgets.QPushButton("Actualizar")
+        self.update_btn.clicked.connect(self.update_usuario)
+        self.update_btn.setEnabled(False)
 
         # layout botones
         self.buttons_layout = QHBoxLayout()
         self.buttons_layout.addWidget(self.registrar_btn)
+        self.buttons_layout.addWidget(self.actualizar_btn)
+        self.buttons_layout.addWidget(self.borrar_btn)
+        self.buttons_layout.addWidget(self.update_btn)
 
         # tabla de usuarios
         self.table_users = QTableWidget()
@@ -168,6 +178,53 @@ class TablaUsuarios(QMainWindow):
         self.widget.setLayout(self.body_layout)
         self.setCentralWidget(self.widget)
 
+    def update_usuario(self):
+        try:
+            query = "UPDATE usuarios SET nombre_usuario=?, passwd_usuario=?, rol_usuario=? WHERE id_usuario=?"
+            parameters = (self.user_field.text(), self.pass_field.text(), self.roles.currentText(), self.id_edit)    
+            self.run_query(query, parameters)
+        except sqlite3.ProgrammingError as e:
+            print('Error encontrado')
+            return
+        self.user_field.setText('') 
+        self.pass_field.setText('')   
+        self.update_btn.setEnabled(False)
+        self.get_usuarios()
+
+    def editar_usuario(self):
+        fila = self.table_users.currentRow()
+
+        try:
+            self.table_users.item(fila,0).text()
+        except AttributeError as e:
+            QMessageBox.information(self,'Atencion','Seleccione un elemento de la tabla')
+            return
+        
+        self.id_edit = self.table_users.item(fila,0).text()
+        query_show = "SELECT nombre_usuario, passwd_usuario FROM usuarios WHERE id_usuario="+self.id_edit
+        db_rows = self.run_query(query_show)
+        usuarios = [dict(nombre_usuario=row[0], passwd_usuario=row[1]) for row in db_rows.fetchall()]        
+
+        for usuario in usuarios:
+            self.user_field.setText(usuario['nombre_usuario'])
+            self.pass_field.setText(usuario['passwd_usuario'])
+        self.update_btn.setEnabled(True)       
+
+    def borrar_usuario(self):
+        row = self.table_users.currentRow()
+
+        try:
+            self.table_users.item(row,0).text()
+        except AttributeError as e:
+            QMessageBox.information(self,'Atencion','Seleccione un elemento de la tabla')
+            return
+
+        id_delete = self.table_users.item(row,0).text()
+        query_delete = "DELETE FROM usuarios WHERE id_usuario = ?"
+        self.run_query(query_delete,(id_delete,))
+        QMessageBox.information(self,'Borrado','El usuario se ha borrado con exito')
+        self.get_usuarios()       
+
 
     def run_query(self, query, parameters = ()):
         with sqlite3.connect(self.db) as conn:
@@ -181,6 +238,8 @@ class TablaUsuarios(QMainWindow):
         query = "INSERT INTO usuarios(id_usuario, nombre_usuario, passwd_usuario, rol_usuario) VALUES(NULL,?,?,?)"
         parameters = (self.user_field.text(), self.pass_field.text(), self.roles.currentText())
         self.run_query(query,parameters)
+        self.user_field.setText('')
+        self.pass_field.setText('')
         self.get_usuarios() 
    
     def get_usuarios(self):
@@ -354,6 +413,7 @@ class Widgets(QMainWindow):
         except OSError as e:
             if e.errno != errno.EEXIST:
                 raise
+            return
 
         self.only_text.setEnabled(False)
         self.id_button.setEnabled(False)
@@ -391,6 +451,7 @@ class Login(QMainWindow):
         # contraseñas 
         self.pass_label = QtWidgets.QLabel("Contraseña: ")
         self.pass_field = QtWidgets.QLineEdit()
+        self.pass_field.setEchoMode(QtWidgets.QLineEdit.Password)
 
         # layout contraseñas
         self.pass_layout = QHBoxLayout()
@@ -427,8 +488,9 @@ class Login(QMainWindow):
 
     def inicio_sesion(self):
         # print(self.pass_field.text())
-        query = "SELECT rol_usuario FROM usuarios WHERE passwd_usuario='"+self.pass_field.text()+"'"
-        db_rows = self.run_query(query)
+        query = "SELECT rol_usuario FROM usuarios WHERE passwd_usuario=? AND nombre_usuario=?"
+        parameters = (self.pass_field.text(), self.user_field.text())
+        db_rows = self.run_query(query, parameters)
         for row in db_rows:
             if 'administrador' in row[0]:
                 dialog = Widgets()
