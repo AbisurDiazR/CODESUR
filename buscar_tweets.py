@@ -1,22 +1,24 @@
-import tweepy
-import json
-# librerias de las interfaces
-import tkinter as tk
-from tkinter import ttk
-from tkinter import Tk, LabelFrame, Label, Entry, CENTER, Menu
-from tkinter.messagebox import showinfo
-# progrees time
-import time
-import sys
 # get old tweets
 import GetOldTweets3 as got
-# threads
-from threading import Thread
+import json
+import sys
+# progrees time
+import time
+# librerias de las interfaces
+import tkinter as tk
+import tweepy
 # web browser lib
 import webbrowser
 # creacion de documento
 from docx import Document
 from docx.shared import Inches
+# threads
+from threading import Thread
+from tkinter import CENTER, Entry, Label, LabelFrame, Menu, Tk, ttk
+from tkinter.messagebox import showinfo
+# archivos
+import os
+import errno
 
 consumer_key = 'gsswiM06At2InB2hgzwfpAiVO'
 consumer_secret = 'jvt4RD4s6rzCUbRq4cCQWTS0dwg809TieyIUpPj2kV1UViuqbt'
@@ -38,7 +40,7 @@ class Ventana:
     # definimos el metodo que creara la interfaz
     def __init__(self, window):
         self.wind = window
-        self.wind.title('CORDESUR')
+        self.wind.title('BUSCATUIT')
 
         # Creamos frame contenedor
         frame = LabelFrame(self.wind, text="Buscar en twitter")
@@ -52,18 +54,23 @@ class Ventana:
         self.button = ttk.Button(
             frame, text='Buscar en twitter', command=self.get_twitters)
         self.button.grid(row=1, column=2)
-        self.button_limpiar = ttk.Button(frame, text='Limpiar tabla', command=self.limpiar_tabla)
+        self.button_limpiar = ttk.Button(
+            frame, text='Limpiar tabla', command=self.limpiar_tabla)
         self.button_limpiar.grid(row=1, column=3)
         Label(frame, text='Progreso de la busqueda: ').grid(row=2, column=0)
         self.progress_bar = ttk.Progressbar(
             frame, orient='horizontal', length=286, mode='determinate')
         self.progress_bar.grid(row=2, column=1)
+        self.label_desc = Label(frame, text='Num Tweets')
+        self.label_desc.grid(row=2, column=2)
+        self.label_tweets = Label(frame, text='#')
+        self.label_tweets.grid(row=2, column=3)
 
         # creamos la tabla
         self.tree = ttk.Treeview(height=10, columns=(
             'texto', 'autor', 'descripcion', 'location'))
         self.tree.grid(row=4, column=0, columnspan=2)
-        self.tree.heading('#0', text='Fecha', anchor=CENTER)
+        self.tree.heading('#0', text='Id', anchor=CENTER)
         self.tree.heading('texto', text='Texto', anchor=CENTER)
         self.tree.heading('autor', text='Autor', anchor=CENTER)
         self.tree.heading(
@@ -85,8 +92,10 @@ class Ventana:
             time.sleep(0.05)
             self.progress_bar["value"] += count
             self.progress_bar.update()
-            if len(user.location) != 0: # and 'uruguay' in user.location or 'Uruguay' in user.location:
-                self.tree.insert('', 0, text=user.id_str, value=(user.name, user.screen_name, user.description, user.location))
+            # and 'uruguay' in user.location or 'Uruguay' in user.location:
+            if len(user.location) != 0:
+                self.tree.insert('', 0, text=user.id_str, value=(
+                    user.name, user.screen_name, user.description, user.location))
             count += 1
 
         self.progress_bar["value"] = 0
@@ -112,32 +121,85 @@ class Ventana:
             # rcmenu.add_command(label='Visitar perfil', command=print(item))
             rcmenu.add_command(label='Añadir a la base de datos',
                                command=self.add_database)
+            rcmenu.add_command(label='Solo texto', command=self.solo_texto)
             rcmenu.add_command(label='Visitar perfil', command=self.selection)
-            rcmenu.add_command(label='Mostrar seguidores', command=self.get_followers)
+            rcmenu.add_command(label='Mostrar seguidores',
+                               command=self.get_followers)
             rcmenu.post(event.x_root, event.y_root)
 
     def add_database(self):
         curItem = self.tree.item(self.id_selection)
-        document.add_heading(curItem['values'][0], 0)
-        document.add_heading(curItem['values'][1], level=1)
-        document.add_paragraph('Descripcion', style='Intense Quote')
-        document.add_paragraph(curItem['values'][2])
+
+        path = 'C:/BUSCATUIT/'+curItem['values'][3]+curItem['values'][1]
+
+        showinfo('Guardado iniciado',
+                 'Se guardaran los resultados en '+path)
+
+        try:
+            os.makedirs(path)
+        except OSError as e:
+            if e.errno != errno.EEXIST:
+                raise
 
         count = 0
 
-        for tweet in tweepy.Cursor(api.user_timeline, id=curItem['values'][1]).items():
-            time.sleep(0.05)
-            self.progress_bar["value"] += count
-            self.progress_bar.update()
-            document.add_paragraph('ID: '+tweet.id_str+' Fecha: '+str(tweet.created_at) +
-                                   ' Texto: '+tweet.text+' Ubicacion: '+tweet.user.location, style='List Number')
-            print('Trabajando '+str(count))
-            count += 1
-        self.progress_bar["value"] = 0
+        file = open(path+"/"+curItem['values']
+                    [1]+".txt", "w", encoding="utf-8")
 
-        # document.add_page_break()
-        document.save('Registro '+curItem['values'][0]+'.docx')
-        print('Tarea completada')
+        try:
+            for tweet in tweepy.Cursor(api.user_timeline, user_id=curItem['text'], tweet_mode='extended', include_rts=False).items():
+                time.sleep(0.05)
+                self.progress_bar["value"] += count
+                self.progress_bar.update()
+                file.write('Fecha: '+str(tweet.created_at) +
+                        ' Texto: '+str(tweet.full_text)+' Ubicacion: '+tweet.user.location+os.linesep)
+                print('Trabajando '+str(count))
+                self.label_tweets.config(text=str(count))
+                count += 1
+            self.progress_bar["value"] = 0
+        except tweepy.TweepError as e:
+            print(e.reason)
+
+        file.close()
+        showinfo('Guardado final',
+                 'Resultados guardados en '+path)
+
+    def solo_texto(self):
+        curItem = self.tree.item(self.id_selection)
+        print(curItem['text'])
+
+        path = 'C:/BUSCATUIT/'+curItem['values'][3]+curItem['values'][1]
+
+        showinfo('Guardado iniciado',
+                 'Se guardaran los resultados en '+path)
+
+        try:
+            os.makedirs(path)
+        except OSError as e:
+            if e.errno != errno.EEXIST:
+                raise
+
+        count = 0
+
+        file = open(path+"/"+curItem['values']
+                    [1]+"_texto.txt", "w", encoding="utf-8")
+
+        try:
+            for tweet in tweepy.Cursor(api.user_timeline, user_id=curItem['text'], tweet_mode='extended', include_rts=False).items():
+                time.sleep(0.05)
+                self.progress_bar["value"] += count
+                self.progress_bar.update()
+                if (not tweet.retweeted) and ('RT @' not in tweet.full_text):
+                    file.write(str(tweet.full_text)+os.linesep)
+                    print('Trabajando '+str(count))
+                    self.label_tweets.config(text=str(count))
+                    count += 1
+        except tweepy.TweepError as e:
+            print(e.reason)
+
+        file.close()
+        showinfo('Guardado final',
+                 'Resultados guardados en '+path)
 
     def get_followers(self):
         count = 0
@@ -147,8 +209,9 @@ class Ventana:
             self.progress_bar["value"] += count
             self.progress_bar.update()
             if len(follower_id.location) != 0:
-                self.tree.insert('', 0, text=follower_id.id_str, value=(follower_id.name, follower_id.screen_name, follower_id.description, follower_id.location))
-            
+                self.tree.insert('', 0, text=follower_id.id_str, value=(
+                    follower_id.name, follower_id.screen_name, follower_id.description, follower_id.location))
+
         self.progress_bar["value"] = 0
 
     def selection(self):

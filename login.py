@@ -1,6 +1,3 @@
-import sys
-import os
-
 from PyQt5.QtCore import QUrl, QThread, pyqtSignal
 from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QApplication, QHBoxLayout, QLineEdit
@@ -8,13 +5,10 @@ from PyQt5.QtWidgets import QMainWindow, QPushButton, QVBoxLayout
 from PyQt5.QtWidgets import QWidget
 from PyQt5.QtWidgets import QMessageBox
 from PyQt5.QtWebEngineWidgets import QWebEngineView
-
-import sys
-
 from PyQt5.QtCore import QUrl, QThread, pyqtSignal
 from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QApplication, QHBoxLayout, QLineEdit
-from PyQt5.QtWidgets import QMainWindow, QPushButton, QVBoxLayout
+from PyQt5.QtWidgets import QMainWindow, QPushButton, QVBoxLayout, QTableWidget
 from PyQt5.QtWidgets import QWidget
 from PyQt5.QtWidgets import QMessageBox
 from PyQt5.QtWebEngineWidgets import QWebEngineView
@@ -23,8 +17,14 @@ import tweepy
 # Time
 import time
 # Creacion de carpeta
+import sys
 import os
 import errno
+# base de datos
+import sqlite3
+# tkinter
+from tkinter import ttk
+from tkinter import *
 
 consumer_key = 'gsswiM06At2InB2hgzwfpAiVO'
 consumer_secret = 'jvt4RD4s6rzCUbRq4cCQWTS0dwg809TieyIUpPj2kV1UViuqbt'
@@ -103,11 +103,123 @@ class OnlyText(QThread):
         file.close()                    
 
 
+class TablaUsuarios(QMainWindow):
+    
+    db = 'calatuit.db'
+
+    # rol_usuario = ''
+
+    def __init__(self):
+        QMainWindow.__init__(self)
+        self.setWindowTitle("Panel de usuarios")
+        self.widget = QWidget(self)
+
+        # nombre de usuario
+        self.user_label = QtWidgets.QLabel("Usuario: ")
+        self.user_field = QtWidgets.QLineEdit()
+
+        # layout usuario
+        self.user_layout = QHBoxLayout()
+        self.user_layout.addWidget(self.user_label)
+        self.user_layout.addWidget(self.user_field)
+
+        # contraseñas 
+        self.pass_label = QtWidgets.QLabel("Contraseña: ")
+        self.pass_field = QtWidgets.QLineEdit()
+
+        # layout contraseñas
+        self.pass_layout = QHBoxLayout()
+        self.pass_layout.addWidget(self.pass_label)
+        self.pass_layout.addWidget(self.pass_field)
+
+        # roles
+        self.roles_label = QtWidgets.QLabel("Roles: ")
+        self.roles = QtWidgets.QComboBox()
+        self.roles.addItems(["usuario","administrador"])
+
+        # layout roles
+        self.roles_layout = QHBoxLayout()
+        self.roles_layout.addWidget(self.roles_label)
+        self.roles_layout.addWidget(self.roles)
+
+        # botones
+        self.registrar_btn = QtWidgets.QPushButton("Registrar usuario")
+        self.registrar_btn.clicked.connect(self.nuevo_usuario)
+
+        # layout botones
+        self.buttons_layout = QHBoxLayout()
+        self.buttons_layout.addWidget(self.registrar_btn)
+
+        # tabla de usuarios
+        self.table_users = QTableWidget()
+        self.table_users.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        self.table_users.setColumnCount(3)
+        self.get_usuarios()
+        
+        # body_layout
+        self.body_layout = QVBoxLayout()
+        self.body_layout.addLayout(self.user_layout)
+        self.body_layout.addLayout(self.pass_layout)
+        self.body_layout.addLayout(self.roles_layout)
+        self.body_layout.addLayout(self.buttons_layout)
+        self.body_layout.addWidget(self.table_users)
+        
+
+        self.widget.setLayout(self.body_layout)
+        self.setCentralWidget(self.widget)
+
+
+    def run_query(self, query, parameters = ()):
+        with sqlite3.connect(self.db) as conn:
+            cursor = conn.cursor()
+            result = cursor.execute(query, parameters)
+            conn.commit()
+
+        return result
+
+    def nuevo_usuario(self):
+        query = "INSERT INTO usuarios(id_usuario, nombre_usuario, passwd_usuario, rol_usuario) VALUES(NULL,?,?,?)"
+        parameters = (self.user_field.text(), self.pass_field.text(), self.roles.currentText())
+        self.run_query(query,parameters)
+        self.get_usuarios() 
+   
+    def get_usuarios(self):
+        query = "SELECT id_usuario, nombre_usuario, rol_usuario FROM usuarios"
+        db_rows = self.run_query(query)
+        usuarios = [dict(id_usuario=row[0], nombre_usuario=row[1], rol_usuario=row[2]) for row in db_rows.fetchall()]
+        
+        count = 0
+        
+        print(len(usuarios))
+        self.table_users.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.AdjustToContents)
+        self.table_users.setRowCount(len(usuarios))
+
+        # Inicializar el encabezado de las columnas
+        header = self.table_users.horizontalHeader()
+        self.table_users.setHorizontalHeaderLabels(["Id","Usuario","Rol"])        
+
+        # inicializar los tooltip del encabezado
+        self.table_users.horizontalHeaderItem(0)
+        self.table_users.horizontalHeaderItem(1)
+        self.table_users.horizontalHeaderItem(2)
+
+        # ajustamos el tamaño de las columnas al contenido
+        header.setSectionResizeMode(0,QtWidgets.QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(1,QtWidgets.QHeaderView.Stretch)
+        header.setSectionResizeMode(2,QtWidgets.QHeaderView.Stretch)
+
+        for usuario in usuarios:
+            self.table_users.setItem(count,0,QtWidgets.QTableWidgetItem(str(usuario['id_usuario'])))
+            self.table_users.setItem(count,1,QtWidgets.QTableWidgetItem(usuario['nombre_usuario']))
+            self.table_users.setItem(count,2,QtWidgets.QTableWidgetItem(usuario['rol_usuario']))
+            count += 1
+        self.table_users.move(0,0)        
+
 class Widgets(QMainWindow):
 
     def __init__(self):
         QMainWindow.__init__(self)
-        self.setWindowTitle("CORDESUR")
+        self.setWindowTitle("CALATUIT")
         self.widget = QWidget(self)
 
         # Widget para el navegador
@@ -149,6 +261,11 @@ class Widgets(QMainWindow):
         self.label_descripcion = QtWidgets.QLabel("Tweets obtenidos:")
         self.label_tweet = QtWidgets.QLabel("#")
 
+        # botono de administrador
+        self.boton_admin = QPushButton("Administra Usuarios")
+        self.boton_admin.clicked.connect(self.abrir_usuarios)
+        self.dialogs = list()
+
         self.toplayout = QHBoxLayout()
         self.toplayout.addWidget(self.back_button)
         self.toplayout.addWidget(self.forward_button)
@@ -164,13 +281,23 @@ class Widgets(QMainWindow):
         self.low_layout.addWidget(self.label_descripcion)
         self.low_layout.addWidget(self.label_tweet)
 
+        # layout administrador
+        self.admin_layout = QHBoxLayout()
+        self.admin_layout.addWidget(self.boton_admin)
+
         self.layout = QVBoxLayout()
         self.layout.addLayout(self.toplayout)
         self.layout.addLayout(self.low_layout)
+        self.layout.addLayout(self.admin_layout)
         self.layout.addWidget(self.webview)
 
         self.widget.setLayout(self.layout)
         self.setCentralWidget(self.widget)
+
+    def abrir_usuarios(self):
+        dialog = TablaUsuarios()
+        self.dialogs.append(dialog)
+        dialog.show()
 
     def url_changed(self, url):
         self.url_text.setText(url.toString())
@@ -184,13 +311,13 @@ class Widgets(QMainWindow):
     def get_id(self):
         user = api.get_user(screen_name=self.array[-1])
 
-        self.path = "C:/"+user.location+user.screen_name
+        self.path = "C:/CALATUIT/"+user.location+user.screen_name
 
         QMessageBox.information(self, "Guardado iniciado",
                                 "El archivo se guardara en la carpeta "+self.path)
 
         try:
-            os.mkdir(self.path)
+            os.makedirs(self.path)
         except OSError as e:
             if e.errno != errno.EEXIST:
                 raise
@@ -217,13 +344,13 @@ class Widgets(QMainWindow):
     def get_text(self):
         user = api.get_user(screen_name=self.array[-1])
 
-        self.path = "C:/"+user.location+user.screen_name
+        self.path = "C:/CALATUIT/"+user.location+user.screen_name
 
         QMessageBox.information(self, "Guardado iniciado",
                                 "El archivo se guardara en la carpeta "+self.path)
 
         try:
-            os.mkdir(self.path)
+            os.makedirs(self.path)
         except OSError as e:
             if e.errno != errno.EEXIST:
                 raise
@@ -245,9 +372,11 @@ class Widgets(QMainWindow):
 
 class Login(QMainWindow):
 
+    dbName = 'calatuit.db'
+
     def __init__(self):
         QMainWindow.__init__(self)
-        self.setWindowTitle("CORDESUR")
+        self.setWindowTitle("CALATUIT")
         self.widget = QWidget(self)
 
         # nombre de usuario
@@ -288,10 +417,33 @@ class Login(QMainWindow):
         self.widget.setLayout(self.layout)
         self.setCentralWidget(self.widget)
 
+    # funcion que conecta con la base de datos
+    def run_query(self, query, parameters = ()):
+        with sqlite3.connect(self.dbName) as conn:
+            cursor = conn.cursor()    
+            result = cursor.execute(query, parameters)
+            conn.commit()
+        return result    
+
     def inicio_sesion(self):
-        dialog = Widgets()
-        self.dialogs.append(dialog)
-        dialog.show()
+        # print(self.pass_field.text())
+        query = "SELECT rol_usuario FROM usuarios WHERE passwd_usuario='"+self.pass_field.text()+"'"
+        db_rows = self.run_query(query)
+        for row in db_rows:
+            if 'administrador' in row[0]:
+                dialog = Widgets()
+                dialog.boton_admin.setEnabled(True)
+                self.dialogs.append(dialog)
+                self.close()
+                dialog.show()
+                print(row[0])
+            else:
+                dialogos = Widgets()
+                dialogos.boton_admin.setEnabled(False)
+                self.dialogs.append(dialogos)
+                self.close()
+                dialogos.show()
+                print(row[0])    
 
     def cerrar_ventana(self):
         self.close()    
